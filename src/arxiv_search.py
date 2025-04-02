@@ -19,7 +19,25 @@ def search_arxiv(query):
 
 
 def split_id_from_url(url):
-    return url.split("/")[-1]
+    try:
+        # PDF URL에서 ID 추출
+        # 예: 'https://arxiv.org/pdf/1706.03762.pdf' -> '1706.03762'
+        parts = url.split("/")
+        raw_id = parts[-1]
+
+        # .pdf 확장자가 있으면 제거
+        if raw_id.endswith(".pdf"):
+            raw_id = raw_id[:-4]
+
+        # 버전 정보 (예: v1, v2) 제거
+        if "v" in raw_id and raw_id.split("v")[-1].isdigit():
+            raw_id = raw_id.split("v")[0]
+
+        return raw_id
+    except Exception:
+        # URL 파싱 중 오류 발생 시 원본 URL 반환
+        st.warning(f"ArXiv ID 추출 중 오류가 발생했습니다: {url}")
+        return url.split("/")[-1]
 
 
 def regist_arxive_id(arxiv_id):

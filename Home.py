@@ -9,8 +9,20 @@ from langchain_community.document_loaders import ArxivLoader
 
 
 def load_arxiv(arxiv_id, with_meta=True):
-    loader = ArxivLoader(arxiv_id, load_all_available_meta=with_meta)
-    return loader.load()
+    try:
+        # arxiv_id 형식 표준화
+        # 가끔 'v1'과 같은 버전 정보가 포함되어 있을 수 있음
+        if "v" in arxiv_id:
+            arxiv_id = arxiv_id.split("v")[0]
+
+        loader = ArxivLoader(arxiv_id, load_all_available_meta=with_meta)
+        return loader.load()
+    except Exception as e:
+        st.error(f"논문 로드 중 오류가 발생했습니다: {str(e)}")
+        st.warning(
+            f"ID '{arxiv_id}'로 논문을 찾을 수 없습니다. 유효한 ArXiv ID인지 확인해주세요."
+        )
+        return []
 
 
 def dataframe_with_selections(df):
@@ -30,21 +42,34 @@ def dataframe_with_selections(df):
 
 
 def save_paper_to_csv(arxiv_id, arxiv_data):
-    if os.path.exists(f"./data/paper_csv/paper.csv"):
-        df = pd.read_csv(f"./data/paper_csv/paper.csv")
-
-        if arxiv_id in df["arxiv_id"].values:
-            st.write("이미 저장된 논문입니다.")
+    try:
+        # 데이터가 없거나 빈 리스트인 경우 처리 중단
+        if not arxiv_data or len(arxiv_data) == 0:
+            st.warning(f"저장할 논문 데이터가 없습니다: {arxiv_id}")
             return
+
+        # 데이터 디렉토리 확인 및 생성
+        os.makedirs("./data/paper_csv", exist_ok=True)
+
+        if os.path.exists(f"./data/paper_csv/paper.csv"):
+            df = pd.read_csv(f"./data/paper_csv/paper.csv")
+
+            if arxiv_id in df["arxiv_id"].values:
+                st.write("이미 저장된 논문입니다.")
+                return
+            else:
+                new_df = pd.json_normalize(arxiv_data[0].dict()["metadata"])
+                new_df["arxiv_id"] = arxiv_id
+                df = pd.concat([df, new_df])
+                df.to_csv(f"./data/paper_csv/paper.csv", index=False)
         else:
             new_df = pd.json_normalize(arxiv_data[0].dict()["metadata"])
             new_df["arxiv_id"] = arxiv_id
-            df = pd.concat([df, new_df])
-            df.to_csv(f"./data/paper_csv/paper.csv", index=False)
-    else:
-        df = pd.json_normalize(arxiv_data[0].dict()["metadata"])
-        df["arxiv_id"] = arxiv_id
-        df.to_csv(f"./data/paper_csv/paper.csv", index=False)
+            new_df.to_csv(f"./data/paper_csv/paper.csv", index=False)
+
+        st.success(f"논문이 저장되었습니다: {arxiv_id}")
+    except Exception as e:
+        st.error(f"논문 저장 중 오류가 발생했습니다: {str(e)}")
 
 
 def handle_arxiv_search(query):
@@ -57,10 +82,20 @@ def handle_arxiv_search(query):
         else:
             st.write("검색 결과가 없습니다. 다른 검색어를 입력해주세요.")
 
-    if st.session_state.axiv_id is not None:
+    if st.session_state.axiv_id is not None and len(st.session_state.axiv_id) > 0:
+        arxiv_ids_to_remove = []
         for arxiv_id in st.session_state.axiv_id:
             arxiv_data = load_arxiv(arxiv_id)
-            save_paper_to_csv(arxiv_id, arxiv_data)
+            if arxiv_data:
+                save_paper_to_csv(arxiv_id, arxiv_data)
+            else:
+                # 논문 로드에 실패한 경우 ID 목록에서 제거
+                arxiv_ids_to_remove.append(arxiv_id)
+
+        # 실패한 ID 제거
+        for arxiv_id in arxiv_ids_to_remove:
+            if arxiv_id in st.session_state.axiv_id:
+                st.session_state.axiv_id.remove(arxiv_id)
 
 
 def handle_interesting_papers(df):
@@ -122,6 +157,9 @@ def handle_interesting_papers(df):
 
 if "axiv_id" not in st.session_state:
     st.session_state.axiv_id = []
+
+if "paper_data" not in st.session_state:
+    st.session_state.paper_data = None
 
 st.set_page_config(
     page_title="Review Paper Home",

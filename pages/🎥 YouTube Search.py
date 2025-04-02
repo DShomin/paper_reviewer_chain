@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from langchain.document_loaders.generic import GenericLoader
 from langchain.document_loaders.parsers.audio import OpenAIWhisperParser
-from langchain.document_loaders import YoutubeLoader
+from langchain_community.document_loaders import YoutubeLoader
 from langchain_community.document_loaders import YoutubeAudioLoader
 from datetime import datetime, timezone
 
@@ -59,6 +59,10 @@ st.set_page_config(
     page_icon="🔍",
 )
 
+if "paper_data" not in st.session_state or st.session_state.paper_data is None:
+    st.error("논문 데이터가 없습니다. 홈페이지에서 논문을 선택해주세요.")
+    st.stop()
+
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
@@ -67,11 +71,7 @@ st.markdown("# YouTube Search")
 # get queyy from user
 query = st.text_input(
     "유튜브를 통해 검색할 검색어를 입력하세요:",
-    value=(
-        st.session_state.paper_data["title"]
-        if st.session_state.paper_data is not None
-        else ""
-    ),
+    value=st.session_state.paper_data["title"] if st.session_state.paper_data else "",
 )
 
 if query:
@@ -100,43 +100,65 @@ if query:
                     transript = "".join([doc.page_content for doc in docs])
                     st.expander("Youtube transript", expanded=True).markdown(transript)
                 else:
-                    col = st.columns([1, 2])
+                    col1, col2 = st.columns([1, 1])
 
-                    target_lang = col[0].selectbox(
-                        "Select Language",
-                        [None, "en", "ko", "ja", "zh"],
-                        key=f"t_lang_{i}",
-                    )
-                    whisper_trans_button = col[1].button(
-                        "Get Whisper Transcript", key=f"whisper_{i}"
-                    )
+                    with col1:
+                        transcript_type = st.selectbox(
+                            "스크립트 가져오기 방식을 선택하세요",
+                            ["선택하세요", "유튜브 자막", "Whisper 음성 인식"],
+                            key=f"script_type_{i}",
+                        )
 
-                    if whisper_trans_button:
-                        SCRIPT_PATH = WHISPER_SCRIPT_DIR
-                        loader = GenericLoader(
-                            YoutubeAudioLoader(
-                                urls=[video["url"]], save_dir=YOUTUBE_AUDIO_SAVE_DIR
-                            ),
-                            OpenAIWhisperParser(
-                                response_format="json", language=target_lang
-                            ),
+                    with col2:
+                        target_lang = st.selectbox(
+                            "언어 선택 (Whisper용)",
+                            [None, "en", "ko", "ja", "zh"],
+                            key=f"t_lang_{i}",
                         )
-                        docs = loader.load()
-                        transript = "".join([doc.page_content for doc in docs])
-                        st.expander("Whisper transript", expanded=False).markdown(
-                            transript
-                        )
-                        save_docs_to_jsonl(docs, SCRIPT_PATH)
 
-                    youtube_trans_button = st.button(
-                        "Get Youtube Transcript", key=f"youtube_{i}"
-                    )
-                    if youtube_trans_button:
-                        SCRIPT_PATH = YOUTUBE_SCRIPT_DIR
-                        loader = YoutubeLoader.from_youtube_url(video["url"])
-                        docs = loader.load()
-                        transript = "".join([doc.page_content for doc in docs])
-                        st.expander("Youtube transript", expanded=False).markdown(
-                            transript
+                    if transcript_type == "Whisper 음성 인식":
+                        st.warning(
+                            "⚠️ Whisper 음성 인식은 OpenAI API 크레딧을 사용합니다. 음성 분량에 따라 비용이 발생할 수 있습니다."
                         )
-                        save_docs_to_jsonl(docs, SCRIPT_PATH)
+
+                    if st.button("스크립트 저장", key=f"save_script_{i}"):
+                        # 디렉토리가 없으면 생성
+                        os.makedirs(YOUTUBE_AUDIO_SAVE_DIR, exist_ok=True)
+
+                        if transcript_type == "유튜브 자막":
+                            SCRIPT_PATH = YOUTUBE_SCRIPT_DIR
+                            with st.spinner("유튜브 자막을 가져오는 중..."):
+                                loader = YoutubeLoader.from_youtube_url(video["url"])
+                                docs = loader.load()
+                                transript = "".join([doc.page_content for doc in docs])
+                                st.expander(
+                                    "Youtube transript", expanded=True
+                                ).markdown(transript)
+                                save_docs_to_jsonl(docs, SCRIPT_PATH)
+                                st.success("유튜브 자막을 성공적으로 저장했습니다!")
+
+                        elif transcript_type == "Whisper 음성 인식":
+                            SCRIPT_PATH = WHISPER_SCRIPT_DIR
+                            with st.spinner(
+                                "Whisper를 사용하여 음성을 텍스트로 변환하는 중... (시간이 다소 소요될 수 있습니다)"
+                            ):
+                                loader = GenericLoader(
+                                    YoutubeAudioLoader(
+                                        urls=[video["url"]],
+                                        save_dir=YOUTUBE_AUDIO_SAVE_DIR,
+                                    ),
+                                    OpenAIWhisperParser(
+                                        response_format="json", language=target_lang
+                                    ),
+                                )
+                                docs = loader.load()
+                                transript = "".join([doc.page_content for doc in docs])
+                                st.expander(
+                                    "Whisper transript", expanded=True
+                                ).markdown(transript)
+                                save_docs_to_jsonl(docs, SCRIPT_PATH)
+                                st.success(
+                                    "Whisper 음성 인식 결과를 성공적으로 저장했습니다!"
+                                )
+                        else:
+                            st.error("스크립트 가져오기 방식을 선택해주세요.")
