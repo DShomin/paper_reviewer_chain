@@ -7,7 +7,7 @@ dotenv.load_dotenv()
 
 def translate(text, target_language="ko"):
     translator = DoctranTextTranslator(
-        language=target_language, openai_api_model="gpt-3.5-turbo"
+        language=target_language, openai_api_model="gpt-4o-mini"
     )
     text = Document(page_content=text)
     translated_document = translator.transform_documents([text])

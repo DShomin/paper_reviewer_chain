@@ -1,5 +1,4 @@
 import os
-import json
 import streamlit as st
 from glob import glob
 from langchain.document_loaders import ArxivLoader
@@ -185,7 +184,7 @@ class ReviewPage:
                 language_code = language_code_map[selected_language]
 
         # 1. 질문 기능을 상단에 배치
-        llm = ChatOpenAI(model="gpt-4o")
+        llm = ChatOpenAI(model="gpt-4o-mini")
         qa_prompt_template = """
         You are an expert in summarizing and explaining complex information. Use the provided information from both academic papers and video reviews to answer the user's question comprehensively. Ensure that your answer is clear, concise, and based on the retrieved documents.
         
