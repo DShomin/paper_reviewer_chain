@@ -4,7 +4,7 @@
 
 ## 예시 영상
 
-https://github.com/DShomin/paper_reviewer_chain/assets/114584168/36e5a6ce-b0cd-42eb-bea9-c9e7e5f3d18c
+![example_video](./asset/paper_reviewer.mp4)
 
 ## 설치 및 설정
 
