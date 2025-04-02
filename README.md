@@ -3,9 +3,8 @@
 이 프로젝트는 학술 논문을 효과적으로 이해하고 분석하기 위한 AI 기반 도구입니다. Arxiv에서 논문을 검색하고, YouTube 리뷰 영상의 내용을 분석하여, 이를 바탕으로 사용자의 질문에 답변하는 기능을 제공합니다.
 
 ## 예시 영상
-![example_video](./asset/paper_reviewer.mp4)
 
-
+https://github.com/DShomin/paper_reviewer_chain/assets/114584168/36e5a6ce-b0cd-42eb-bea9-c9e7e5f3d18c
 
 ## 설치 및 설정
 
