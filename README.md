@@ -4,7 +4,7 @@
 
 ## 예시 영상
 
-![example_video](./asset/paper_reviewer_compressed.mp4)
+![example_video](./asset/paper_reviewer.gif)
 
 ## 설치 및 설정
 
