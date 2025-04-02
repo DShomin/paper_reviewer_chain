@@ -1,0 +1,8 @@
+streamlit==1.32.0
+pandas==2.1.4
+arxiv==2.1.0
+langchain==0.1.11
+langchain-community==0.0.29
+openai==1.14.0
+python-dotenv==1.0.1
+google-api-python-client==2.118.0 
